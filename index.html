@@ -5,12 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#2b1d10">
 <meta name="description" content="An enchanted diary that writes back.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diary">
+<meta name="application-name" content="Diary">
+<meta name="msapplication-TileColor" content="#2b1d10">
 <title>Tom Riddle's Diary</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&family=Caveat:wght@400;600&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<!-- favicon / apple-touch-icon / manifest are generated at runtime from an inline canvas
+     quill icon (see section 13 "APP IDENTITY") — no external image assets required. -->
 
 <!-- ============================================================
      TOM RIDDLE'S DIARY — single-file PWA
@@ -39,6 +47,8 @@
     --font-hand: 'Homemade Apple', 'Caveat', cursive;
     --font-hand-reply: 'Caveat', 'Homemade Apple', cursive;
     --font-ui: 'EB Garamond', serif;
+    /* "Paper Notes" style handwritten input font used for the typed-mode text area */
+    --font-paper-notes: 'Homemade Apple', 'Caveat', cursive;
   }
 
   *{ box-sizing: border-box; }
@@ -163,6 +173,32 @@
     50%{ opacity: 1; transform: scale(1.15); }
   }
 
+  /* status states — only one shown at a time, small + elegant */
+  .status-icon.writing i{ color: var(--ink-user); opacity: 0.6; animation: statusNudge 1.6s ease-in-out infinite; }
+  .status-icon.absorbing i{ color: #4a6b57; opacity: 0.75; animation: quillPulse 0.9s ease-in-out infinite; }
+  .status-icon.replying i{ color: var(--ink-reply); opacity: 0.75; animation: statusNudge 1.4s ease-in-out infinite; }
+  .status-icon.offline i{ color: #8a3a3a; opacity: 0.6; }
+  @keyframes statusNudge{
+    0%, 100%{ transform: rotate(-4deg); }
+    50%{ transform: rotate(4deg); }
+  }
+  .status-icon{ position: relative; }
+  .status-label{
+    position: absolute;
+    top: 100%; right: 0;
+    margin-top: 2px;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-style: italic;
+    letter-spacing: 0.3px;
+    color: rgba(40,24,8,0.4);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .status-icon.show-label .status-label{ opacity: 1; }
+
   /* ---------------- Writing surface ---------------- */
 
   .surface-wrap{
@@ -199,7 +235,7 @@
     position: absolute;
     inset: 0;
     padding: 8px 4px;
-    font-family: var(--font-hand);
+    font-family: var(--font-paper-notes);
     font-size: clamp(22px, 4vw, 30px);
     line-height: var(--line-height, 42px);
     color: var(--ink-user);
@@ -245,7 +281,9 @@
     100%{ opacity: 1; filter: blur(0); transform: translateY(0); }
   }
 
-  /* hidden native input capturing keyboard on mobile */
+  /* hidden native input capturing keyboard on mobile — becomes the real
+     (still visually-invisible; text is rendered into #typedLayer) input
+     surface only while typing mode is active. */
   #hiddenInput{
     position: absolute;
     opacity: 0;
@@ -254,14 +292,86 @@
     pointer-events: none;
   }
 
+  /* ---------------- Drawing vs typing mode ---------------- */
+  /* default: handwriting/drawing mode only — canvas active, typed layer dormant */
+  .surface-wrap:not(.typing-mode) #typedLayer{ opacity: 0.001; }
+  .surface-wrap.typing-mode #inkCanvas{
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .surface-wrap:not(.typing-mode) #inkCanvas{ transition: opacity 0.25s ease; }
+
+  #typedLayer .caret{
+    display: inline-block;
+    width: 2px;
+    margin-left: 1px;
+    background: var(--ink-user);
+    opacity: 0.7;
+    animation: caretBlink 1s step-end infinite;
+    vertical-align: -0.15em;
+    height: 0.9em;
+  }
+  @keyframes caretBlink{ 0%, 49%{ opacity: 0.7; } 50%, 100%{ opacity: 0; } }
+
+  /* floating keyboard/pen mode toggle */
+  .keyboard-toggle{
+    position: absolute;
+    right: clamp(10px, 3vw, 20px);
+    bottom: clamp(8px, 2vw, 16px);
+    z-index: 6;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(90,60,20,0.25);
+    background: rgba(233, 220, 184, 0.55);
+    color: rgba(40, 24, 8, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(30,18,6,0.25);
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+  }
+  .keyboard-toggle:hover{ background: rgba(233, 220, 184, 0.85); color: var(--accent); }
+  .keyboard-toggle:active{ transform: scale(0.92); }
+  .keyboard-toggle.active{ background: var(--accent); color: var(--parchment-1); }
+  .keyboard-toggle:disabled{ opacity: 0.4; cursor: default; pointer-events: none; }
+  .keyboard-toggle:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------------- Ink absorb: liquid soaking into parchment ---------------- */
   .surface-wrap.absorbing #typedLayer,
   .surface-wrap.absorbing #inkCanvas{
-    animation: soakIntoParchment 1.1s ease-in forwards;
+    animation: soakIntoParchment 1.15s ease-in forwards;
   }
   @keyframes soakIntoParchment{
-    0%{ opacity: 1; filter: blur(0) saturate(1); }
-    40%{ opacity: 0.55; filter: blur(0.6px) saturate(1.3); }
-    100%{ opacity: 0; filter: blur(2.5px) saturate(1.6); transform: scale(0.995); }
+    0%{ opacity: 1; filter: blur(0) saturate(1) contrast(1); transform: scale(1); }
+    30%{ opacity: 0.8; filter: blur(0.3px) saturate(1.2) contrast(1.05); transform: scale(1.003); }
+    60%{ opacity: 0.4; filter: blur(1.4px) saturate(1.5) contrast(1.1); transform: scale(0.998); }
+    100%{ opacity: 0; filter: blur(3px) saturate(1.8) contrast(1.15); transform: scale(0.99); }
+  }
+  /* spreading ink "blot" bloom that grows and fades behind the vanishing text,
+     mimicking liquid soaking into paper fibers rather than a flat fade */
+  .surface-wrap.absorbing::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background:
+      radial-gradient(circle at 30% 35%, rgba(58,20,8,0.28), transparent 42%),
+      radial-gradient(circle at 65% 60%, rgba(58,20,8,0.22), transparent 38%),
+      radial-gradient(circle at 45% 80%, rgba(58,20,8,0.18), transparent 34%);
+    mix-blend-mode: multiply;
+    opacity: 0;
+    animation: inkBloom 1.15s ease-in forwards;
+  }
+  @keyframes inkBloom{
+    0%{ opacity: 0; transform: scale(0.4); }
+    28%{ opacity: 0.65; transform: scale(0.75); }
+    65%{ opacity: 0.4; transform: scale(1.1); }
+    100%{ opacity: 0; transform: scale(1.5); }
   }
 
   .placeholder-hint{
@@ -384,11 +494,14 @@
   /* ---------------- Reduced motion ---------------- */
   @media (prefers-reduced-motion: reduce){
     #typedLayer .char, #replyLayer .rchar, .surface-wrap.absorbing #typedLayer,
-    .surface-wrap.absorbing #inkCanvas, .status-icon.thinking i{
+    .surface-wrap.absorbing #inkCanvas, .status-icon.thinking i,
+    .status-icon.writing i, .status-icon.absorbing i, .status-icon.replying i,
+    .surface-wrap.absorbing::before, #typedLayer .caret{
       animation: none !important;
       opacity: 1 !important;
       filter: none !important;
     }
+    .surface-wrap.absorbing::before{ opacity: 0 !important; }
   }
 
   @media (max-width: 480px){
@@ -405,7 +518,11 @@
         <i class="fa-solid fa-bars"></i>
       </button>
       <span class="diary-title" aria-hidden="true">Tom Riddle's Diary</span>
-      <span class="status-icon" id="statusIcon" aria-hidden="true"><i class="fa-solid fa-feather"></i></span>
+      <span class="status-icon" id="statusIcon" title="Ready">
+        <i class="fa-solid fa-feather" aria-hidden="true"></i>
+        <span class="status-label" aria-hidden="true" id="statusLabel"></span>
+      </span>
+      <span class="visually-hidden" id="statusLive" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);"></span>
     </div>
 
     <div class="surface-wrap" id="surfaceWrap">
@@ -414,7 +531,10 @@
       <canvas id="inkCanvas" aria-hidden="true"></canvas>
       <div id="typedLayer" aria-hidden="true"></div>
       <div id="replyLayer" aria-hidden="true"></div>
-      <textarea id="hiddenInput" aria-label="Write in the diary" autocapitalize="sentences" autocomplete="off" spellcheck="false"></textarea>
+      <textarea id="hiddenInput" aria-label="Write in the diary" autocapitalize="sentences" autocomplete="off" spellcheck="false" tabindex="-1"></textarea>
+      <button class="keyboard-toggle" id="keyboardToggle" type="button" aria-label="Switch to typing mode" aria-pressed="false" title="Switch to typing mode">
+        <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
+      </button>
     </div>
 
     <div class="page-footer" id="pageFooter">the diary is listening</div>
@@ -460,6 +580,7 @@ let history = []; // {role, content}
 let isBusy = false;
 let idleTimer = null;
 const IDLE_MS = 1400;
+let typingMode = false; // false = handwriting/drawing (default), true = typed input
 
 const hiddenInput = document.getElementById('hiddenInput');
 const typedLayer = document.getElementById('typedLayer');
@@ -467,10 +588,13 @@ const replyLayer = document.getElementById('replyLayer');
 const surfaceWrap = document.getElementById('surfaceWrap');
 const placeholderHint = document.getElementById('placeholderHint');
 const statusIcon = document.getElementById('statusIcon');
+const statusLabel = document.getElementById('statusLabel');
+const statusLive = document.getElementById('statusLive');
 const pageFooter = document.getElementById('pageFooter');
 const noticeEl = document.getElementById('notice');
 const canvas = document.getElementById('inkCanvas');
 const ctx = canvas.getContext('2d');
+const keyboardToggle = document.getElementById('keyboardToggle');
 
 /* =====================================================================
    3. NOTICES
@@ -481,6 +605,30 @@ function showNotice(msg, ms = 3200){
   noticeEl.classList.add('show');
   clearTimeout(noticeTimeout);
   noticeTimeout = setTimeout(() => noticeEl.classList.remove('show'), ms);
+}
+
+/* =====================================================================
+   3b. STATUS — exactly one of these states is shown at any time
+   ===================================================================== */
+const STATUS_STATES = {
+  ready:     { icon: 'fa-feather',            label: 'Ready' },
+  writing:   { icon: 'fa-pen',                label: 'Writing' },
+  absorbing: { icon: 'fa-droplet',            label: 'Ink Absorbing' },
+  thinking:  { icon: 'fa-feather-pointed',    label: 'Thinking' },
+  replying:  { icon: 'fa-pen-nib',            label: 'Reply Writing' },
+  offline:   { icon: 'fa-wifi',               label: 'Offline' }
+};
+let currentStatus = 'ready';
+function setStatus(state){
+  if (!STATUS_STATES[state] || state === currentStatus) return;
+  // Offline always takes precedence over idle "ready", but never interrupts an in-flight ritual
+  currentStatus = state;
+  const cfg = STATUS_STATES[state];
+  Object.keys(STATUS_STATES).forEach(s => statusIcon.classList.remove(s));
+  statusIcon.classList.add(state);
+  statusIcon.innerHTML = `<i class="fa-solid ${cfg.icon}" aria-hidden="true"></i><span class="status-label" aria-hidden="true">${cfg.label}</span>`;
+  statusIcon.title = cfg.label;
+  statusLive.textContent = cfg.label;
 }
 
 /* =====================================================================
@@ -544,18 +692,19 @@ function canvasPoint(evt){
 
 let drawing = false;
 function pointerDown(e){
-  if (isBusy) return;
+  if (isBusy || typingMode) return;
   // ignore multi-touch gestures (allow scrolling with two fingers, but this app has no scroll needs)
   if (e.pointerType === 'touch' && e.isPrimary === false) return;
   drawing = true;
   currentStroke = [canvasPoint(e)];
   strokes.push(currentStroke);
   hidePlaceholder();
+  setStatus('writing');
   resetIdleTimer();
   canvas.setPointerCapture && e.pointerId !== undefined && canvas.setPointerCapture(e.pointerId);
 }
 function pointerMove(e){
-  if (!drawing || isBusy) return;
+  if (!drawing || isBusy || typingMode) return;
   const pt = canvasPoint(e);
   currentStroke.push(pt);
   const prev = currentStroke[currentStroke.length - 2] || pt;
@@ -578,9 +727,10 @@ canvas.addEventListener('pointermove', pointerMove);
 window.addEventListener('pointerup', pointerUp);
 window.addEventListener('pointercancel', pointerUp);
 
-// Tapping/clicking the surface also focuses hidden input so keyboard typing works alongside drawing
+// Tapping/clicking the surface focuses the text input, but only while typing mode is active —
+// drawing mode and typing mode are kept strictly separate.
 surfaceWrap.addEventListener('pointerdown', () => {
-  if (!isBusy) hiddenInput.focus({ preventScroll: true });
+  if (!isBusy && typingMode) hiddenInput.focus({ preventScroll: true });
 });
 
 window.addEventListener('resize', sizeCanvas);
@@ -592,7 +742,7 @@ window.addEventListener('orientationchange', () => setTimeout(sizeCanvas, 200));
 function renderTypedText(){
   const text = hiddenInput.value;
   if (text.length === 0){
-    typedLayer.innerHTML = '';
+    typedLayer.innerHTML = typingMode ? '<span class="caret"></span>' : '';
     showPlaceholderIfEmpty();
     return;
   }
@@ -610,6 +760,7 @@ function renderTypedText(){
       html += `<span class="char"${isNew ? '' : ' style="animation:none;"'}>${ch}</span>`;
     }
   }
+  if (typingMode) html += '<span class="caret"></span>';
   typedLayer.innerHTML = html;
 }
 
@@ -618,18 +769,49 @@ function escapeHtml(s){
 }
 
 hiddenInput.addEventListener('input', () => {
-  if (isBusy) return;
+  if (isBusy || !typingMode) return;
   renderTypedText();
+  hidePlaceholder();
+  setStatus('writing');
   resetIdleTimer();
 });
 
 hiddenInput.addEventListener('keydown', (e) => {
-  if (isBusy){ e.preventDefault(); return; }
+  if (isBusy || !typingMode){ e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey){
     e.preventDefault();
     clearTimeout(idleTimer);
     triggerCompletion();
   }
+});
+
+/* =====================================================================
+   5b. INPUT MODE TOGGLE — a single floating button swaps between
+   handwriting (default) and typing mode. Only one is ever interactive.
+   ===================================================================== */
+function setTypingMode(on){
+  if (isBusy) return; // never allow switching mid-ritual
+  typingMode = on;
+  surfaceWrap.classList.toggle('typing-mode', typingMode);
+  keyboardToggle.classList.toggle('active', typingMode);
+  keyboardToggle.setAttribute('aria-pressed', String(typingMode));
+  keyboardToggle.title = typingMode ? 'Switch to drawing mode' : 'Switch to typing mode';
+  keyboardToggle.setAttribute('aria-label', keyboardToggle.title);
+  keyboardToggle.innerHTML = `<i class="fa-solid ${typingMode ? 'fa-pen' : 'fa-keyboard'}" aria-hidden="true"></i>`;
+  hiddenInput.tabIndex = typingMode ? 0 : -1;
+  if (typingMode){
+    renderTypedText();
+    setTimeout(() => hiddenInput.focus({ preventScroll: true }), 50);
+  } else {
+    hiddenInput.blur();
+    typedLayer.innerHTML = hiddenInput.value ? typedLayer.innerHTML.replace(/<span class="caret"><\/span>/, '') : '';
+  }
+  showPlaceholderIfEmpty();
+}
+
+keyboardToggle.addEventListener('click', () => {
+  if (isBusy) return;
+  setTypingMode(!typingMode);
 });
 
 function hidePlaceholder(){ placeholderHint.style.opacity = '0'; }
@@ -661,6 +843,7 @@ async function triggerCompletion(){
   setBusyUI(true);
   clearTimeout(idleTimer);
 
+  setStatus('absorbing');
   await absorbInk();
 
   // Drawing-only input has no text content to send to the language model;
@@ -676,8 +859,10 @@ async function triggerCompletion(){
   history.push({ role: 'user', content: userMessage });
 
   try{
+    setStatus('thinking');
     const reply = await fetchDiaryReply();
     history.push({ role: 'assistant', content: reply });
+    setStatus('replying');
     await writeReplyStroke(reply);
   } catch(err){
     console.error(err);
@@ -691,13 +876,14 @@ async function triggerCompletion(){
   } finally {
     isBusy = false;
     setBusyUI(false);
+    setStatus(navigator.onLine ? 'ready' : 'offline');
   }
 }
 
 function setBusyUI(busy){
   hiddenInput.disabled = busy;
   canvas.style.pointerEvents = busy ? 'none' : 'auto';
-  statusIcon.classList.toggle('thinking', busy);
+  keyboardToggle.disabled = busy;
   pageFooter.textContent = busy ? 'the diary is writing' : 'the diary is listening';
   if (!busy) setTimeout(() => hiddenInput.focus({ preventScroll: true }), 50);
 }
@@ -846,39 +1032,187 @@ window.addEventListener('appinstalled', () => {
 });
 
 /* =====================================================================
-   12. SERVICE WORKER (offline cache) — registered from an inline blob
+   12. SERVICE WORKER (offline cache) — single-file deployment friendly.
+   This app is meant to be hosted as one index.html (e.g. GitHub Pages),
+   so no second sw.js file is required on disk: the worker source is
+   defined inline below and registered from a same-origin Blob URL.
+   This is different from (and safe unlike) registering a *remote* or
+   cross-origin blob — the Blob is created in-page from a trusted local
+   string and served through a normal object URL, which all evergreen
+   browsers support for service workers on http(s) origins.
+   Environments where registration cannot possibly succeed (no SW API,
+   a non-http(s) origin such as a local file:// preview, or an opaque
+   sandboxed iframe origin) are detected up front and registration is
+   skipped entirely — offline support simply stays disabled, with no
+   attempt made and no warning logged.
    ===================================================================== */
-if ('serviceWorker' in navigator){
+(function registerServiceWorker(){
+  const supportsSW = 'serviceWorker' in navigator;
+  const isHttp = location.protocol === 'http:' || location.protocol === 'https:';
+  // Sandboxed preview frames / opaque origins report protocol http(s) but
+  // origin "null" — registration there will always reject, so skip quietly.
+  const hasRealOrigin = typeof location.origin === 'string' && location.origin !== 'null';
+
+  if (!supportsSW || !isHttp || !hasRealOrigin){
+    return; // gracefully disable offline support, no console noise
+  }
+
   const swSource = `
     const CACHE = 'tom-riddle-diary-v1';
-    self.addEventListener('install', (e) => {
+    self.addEventListener('install', (event) => {
       self.skipWaiting();
-      e.waitUntil(caches.open(CACHE).then(c => c.add(self.registration.scope)));
+      event.waitUntil(
+        caches.open(CACHE).then((cache) => cache.add(self.registration.scope)).catch(() => {})
+      );
     });
-    self.addEventListener('activate', (e) => { self.clients.claim(); });
-    self.addEventListener('fetch', (e) => {
-      if (e.request.method !== 'GET') return;
-      e.respondWith(
-        caches.match(e.request).then(cached => {
-          if (cached) return cached;
-          return fetch(e.request).then(res => {
-            const copy = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
-            return res;
-          }).catch(() => cached);
+    self.addEventListener('activate', (event) => {
+      event.waitUntil(self.clients.claim());
+    });
+    self.addEventListener('fetch', (event) => {
+      if (event.request.method !== 'GET') return;
+      event.respondWith(
+        caches.match(event.request).then((cached) => {
+          const fetchPromise = fetch(event.request)
+            .then((res) => {
+              const copy = res.clone();
+              caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => {});
+              return res;
+            })
+            .catch(() => cached);
+          return cached || fetchPromise;
         })
       );
     });
   `;
-  const swBlob = new Blob([swSource], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(swBlob);
+
+  let swUrl;
+  try{
+    const blob = new Blob([swSource], { type: 'application/javascript' });
+    swUrl = URL.createObjectURL(blob);
+  } catch(e){
+    return; // Blob/URL API unavailable — disable offline support quietly
+  }
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(swUrl).catch(err => console.warn('Service worker registration failed:', err));
+    navigator.serviceWorker.register(swUrl, { scope: './' }).catch(() => {
+      // Registration can still fail in some restricted/preview contexts
+      // (e.g. serialized sandbox without SW support, or a host that
+      // blocks blob: service worker scripts). Fail silently — the diary
+      // works fully online without offline caching either way.
+    });
   });
+})();
+
+/* =====================================================================
+   13. APP IDENTITY — feather/quill icon drawn on <canvas> at runtime,
+   rendered into the 192x192 and 512x512 PWA sizes plus a favicon and
+   apple-touch-icon. No external image assets; parchment + ink palette
+   matches the diary theme.
+   ===================================================================== */
+function drawQuillIcon(size){
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const g = c.getContext('2d');
+  const s = size / 192; // scale factor from the 192px design grid
+
+  // background: dark leather-bound tile with soft radial glow
+  const bg = g.createRadialGradient(size*0.35, size*0.25, size*0.05, size*0.5, size*0.5, size*0.75);
+  bg.addColorStop(0, '#2b1d10');
+  bg.addColorStop(1, '#140d06');
+  g.fillStyle = bg;
+  roundRect(g, 0, 0, size, size, 24*s);
+  g.fill();
+
+  // parchment page
+  g.fillStyle = '#ddc99a';
+  roundRect(g, 40*s, 30*s, 112*s, 132*s, 6*s);
+  g.fill();
+  g.fillStyle = '#b9985f';
+  g.fillRect(40*s, 30*s, 10*s, 132*s);
+
+  // ruled lines
+  g.strokeStyle = 'rgba(58,20,8,0.35)';
+  g.lineWidth = Math.max(1, 3*s);
+  g.lineCap = 'round';
+  [70, 92, 114].forEach((y, i) => {
+    const width = i === 2 ? 48 : 68;
+    g.beginPath();
+    g.moveTo(62*s, y*s);
+    g.lineTo((62+width)*s, y*s);
+    g.stroke();
+  });
+
+  // feather quill, angled across the page
+  g.save();
+  g.translate(size*0.66, size*0.30);
+  g.rotate(-0.55);
+  const quillGrad = g.createLinearGradient(0, -60*s, 0, 60*s);
+  quillGrad.addColorStop(0, '#f2e6c8');
+  quillGrad.addColorStop(1, '#a9793a');
+  g.fillStyle = quillGrad;
+  g.beginPath();
+  g.moveTo(0, -58*s);
+  g.quadraticCurveTo(16*s, -30*s, 10*s, 6*s);
+  g.quadraticCurveTo(6*s, 30*s, -2*s, 56*s);
+  g.quadraticCurveTo(-8*s, 30*s, -10*s, 0);
+  g.quadraticCurveTo(-12*s, -30*s, 0, -58*s);
+  g.closePath();
+  g.fill();
+  // quill spine + barbs
+  g.strokeStyle = 'rgba(90,60,20,0.55)';
+  g.lineWidth = Math.max(1, 1.6*s);
+  g.beginPath();
+  g.moveTo(0, -54*s);
+  g.quadraticCurveTo(0, 0, -2*s, 54*s);
+  g.stroke();
+  for (let i = -46; i <= 40; i += 12){
+    g.beginPath();
+    g.moveTo(-1*s, i*s);
+    g.lineTo(-9*s, (i+7)*s);
+    g.stroke();
+  }
+  // nib
+  g.fillStyle = '#3a1408';
+  g.beginPath();
+  g.moveTo(-2*s, 54*s);
+  g.lineTo(4*s, 62*s);
+  g.lineTo(-6*s, 68*s);
+  g.closePath();
+  g.fill();
+  g.restore();
+
+  return c.toDataURL('image/png');
 }
 
-// Minimal inline web app manifest (data URI) so the app is installable
-// without requiring a separate manifest.json file on disk.
+function roundRect(g, x, y, w, h, r){
+  g.beginPath();
+  g.moveTo(x+r, y);
+  g.arcTo(x+w, y, x+w, y+h, r);
+  g.arcTo(x+w, y+h, x, y+h, r);
+  g.arcTo(x, y+h, x, y, r);
+  g.arcTo(x, y, x+w, y, r);
+  g.closePath();
+}
+
+const icon192 = drawQuillIcon(192);
+const icon512 = drawQuillIcon(512);
+
+// favicon + apple-touch-icon, generated from the same canvas artwork
+(function attachIcons(){
+  const fav = document.createElement('link');
+  fav.rel = 'icon';
+  fav.type = 'image/png';
+  fav.href = icon192;
+  document.head.appendChild(fav);
+
+  const apple = document.createElement('link');
+  apple.rel = 'apple-touch-icon';
+  apple.href = icon192;
+  document.head.appendChild(apple);
+})();
+
+// Web app manifest (data URI) so the app is installable without a
+// separate manifest.json file on disk.
 (function attachManifest(){
   const manifest = {
     name: "Tom Riddle's Diary",
@@ -889,13 +1223,10 @@ if ('serviceWorker' in navigator){
     theme_color: "#2b1d10",
     description: "An enchanted diary that writes back.",
     icons: [
-      {
-        src: "data:image/svg+xml," + encodeURIComponent(
-          `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='24' fill='%231c130a'/><rect x='40' y='30' width='112' height='132' rx='6' fill='%23ddc99a'/><rect x='40' y='30' width='10' height='132' fill='%23b9985f'/><path d='M62 70 h68 M62 92 h68 M62 114 h48' stroke='%233a1408' stroke-width='4' stroke-linecap='round'/></svg>`
-        ),
-        sizes: "192x192",
-        type: "image/svg+xml"
-      }
+      { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: icon512, sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: icon192, sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: icon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
@@ -909,8 +1240,14 @@ if ('serviceWorker' in navigator){
 /* =====================================================================
    13. OFFLINE / ONLINE NOTICES
    ===================================================================== */
-window.addEventListener('offline', () => showNotice('You have drifted offline. The diary waits.', 3000));
-window.addEventListener('online', () => showNotice('The connection returns.', 1800));
+window.addEventListener('offline', () => {
+  showNotice('You have drifted offline. The diary waits.', 3000);
+  if (!isBusy) setStatus('offline');
+});
+window.addEventListener('online', () => {
+  showNotice('The connection returns.', 1800);
+  if (!isBusy) setStatus('ready');
+});
 
 /* =====================================================================
    14. INIT
@@ -925,6 +1262,7 @@ function init(){
   computeLineHeight();
   sizeCanvas();
   showPlaceholderIfEmpty();
+  if (!navigator.onLine) setStatus('offline');
   // Auto-focus on non-touch devices only, to avoid popping the mobile keyboard on load
   if (!('ontouchstart' in window)) hiddenInput.focus({ preventScroll: true });
 
