@@ -132,18 +132,28 @@
     padding: clamp(10px, 2.4vw, 20px) clamp(16px, 4vw, 34px) 0;
   }
 
+  .menu-wrap{
+    position: relative;
+  }
+
   .menu-btn, .status-dot-wrap{
-    background: none;
-    border: none;
+    background: rgba(70, 40, 10, 0.10);
+    border: 1px solid rgba(90,60,20,0.18);
     color: rgba(40, 24, 8, 0.65);
-    font-size: clamp(18px, 3vw, 22px);
+    font-size: clamp(15px, 2.6vw, 18px);
     cursor: pointer;
-    padding: 8px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     line-height: 1;
     border-radius: 50%;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
   }
-  .menu-btn:hover{ background: rgba(70,40,10,0.08); color: var(--accent); }
+  .menu-btn:hover{ background: rgba(70,40,10,0.18); color: var(--accent); }
+  .menu-btn:active{ transform: scale(0.92); }
+  .menu-btn.active{ background: var(--accent); color: var(--parchment-1); border-color: var(--accent); }
   .menu-btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .diary-title{
@@ -321,37 +331,71 @@
   .keyboard-toggle:disabled{ opacity: 0.4; cursor: default; pointer-events: none; }
   .keyboard-toggle:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* ---------------- Ink absorb: liquid soaking into parchment ---------------- */
+  /* send button — sits just left of the keyboard toggle, always visible,
+     lights up once there is text to send */
+  .send-button{
+    position: absolute;
+    right: clamp(58px, 3vw + 48px, 68px);
+    bottom: clamp(8px, 2vw, 16px);
+    z-index: 6;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(90,60,20,0.25);
+    background: rgba(233, 220, 184, 0.35);
+    color: rgba(40, 24, 8, 0.32);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: not-allowed;
+    box-shadow: 0 4px 12px rgba(30,18,6,0.18);
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  }
+  .send-button.active{
+    background: var(--accent);
+    color: var(--parchment-1);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(122, 31, 31, 0.4);
+  }
+  .send-button.active:hover{ background: #8f2626; }
+  .send-button.active:active{ transform: scale(0.92); }
+  .send-button:disabled{ pointer-events: none; }
+  .send-button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------------- Ink absorb: refined dissolve when a message is sent ---------------- */
   .surface-wrap.absorbing #typedLayer{
-    animation: soakIntoParchment 1.15s ease-in forwards;
+    animation: soakIntoParchment 0.62s cubic-bezier(.4,0,.2,1) forwards;
   }
   @keyframes soakIntoParchment{
-    0%{ opacity: 1; filter: blur(0) saturate(1) contrast(1); transform: scale(1); }
-    30%{ opacity: 0.8; filter: blur(0.3px) saturate(1.2) contrast(1.05); transform: scale(1.003); }
-    60%{ opacity: 0.4; filter: blur(1.4px) saturate(1.5) contrast(1.1); transform: scale(0.998); }
-    100%{ opacity: 0; filter: blur(3px) saturate(1.8) contrast(1.15); transform: scale(0.99); }
+    0%{ opacity: 1; filter: blur(0) saturate(1); transform: translateY(0) scale(1); }
+    100%{ opacity: 0; filter: blur(3px) saturate(1.4); transform: translateY(-6px) scale(0.99); }
   }
-  /* spreading ink "blot" bloom that grows and fades behind the vanishing text,
-     mimicking liquid soaking into paper fibers rather than a flat fade */
+  /* soft ink bloom accompanying the dissolve — brief, subtle, no jitter */
   .surface-wrap.absorbing::before{
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 3;
-    background:
-      radial-gradient(circle at 30% 35%, rgba(58,20,8,0.28), transparent 42%),
-      radial-gradient(circle at 65% 60%, rgba(58,20,8,0.22), transparent 38%),
-      radial-gradient(circle at 45% 80%, rgba(58,20,8,0.18), transparent 34%);
+    background: radial-gradient(circle at 40% 40%, rgba(58,20,8,0.16), transparent 55%);
     mix-blend-mode: multiply;
     opacity: 0;
-    animation: inkBloom 1.15s ease-in forwards;
+    animation: inkBloom 0.62s cubic-bezier(.4,0,.2,1) forwards;
   }
   @keyframes inkBloom{
-    0%{ opacity: 0; transform: scale(0.4); }
-    28%{ opacity: 0.65; transform: scale(0.75); }
-    65%{ opacity: 0.4; transform: scale(1.1); }
-    100%{ opacity: 0; transform: scale(1.5); }
+    0%{ opacity: 0; transform: scale(0.85); }
+    45%{ opacity: 0.5; transform: scale(1); }
+    100%{ opacity: 0; transform: scale(1.2); }
+  }
+
+  /* reply dismissal — a calm cross-fade when fresh writing begins,
+     replacing the old reply rather than cutting it away abruptly */
+  #replyLayer.dismissing{
+    transition: opacity 0.4s cubic-bezier(.4,0,.2,1), filter 0.4s cubic-bezier(.4,0,.2,1), transform 0.4s cubic-bezier(.4,0,.2,1);
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateY(-4px);
   }
 
   .placeholder-hint{
@@ -377,76 +421,80 @@
     user-select: none;
   }
 
-  /* ---------------- Side menu ---------------- */
+  /* ---------------- Dropdown menu (icon-only, anchored in-canvas) ---------------- */
 
-  .menu-overlay{
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 6, 2, 0.5);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-    z-index: 50;
-  }
-  .menu-overlay.open{ opacity: 1; pointer-events: auto; }
-
-  .side-menu{
-    position: fixed;
-    top: 0; left: 0;
-    height: 100%;
-    width: min(280px, 78vw);
+  .menu-dropdown{
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 40;
     background: var(--menu-bg);
-    color: var(--menu-fg);
-    transform: translateX(-100%);
-    transition: transform 0.32s cubic-bezier(.4,0,.2,1);
-    z-index: 51;
+    border: 1px solid rgba(233, 220, 184, 0.14);
+    border-radius: 14px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    padding: 28px 22px;
-    box-shadow: 8px 0 30px rgba(0,0,0,0.4);
+    gap: 2px;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.45);
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+    transform-origin: top left;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.4,0,.2,1);
   }
-  .side-menu.open{ transform: translateX(0); }
-
-  .side-menu h2{
-    font-family: var(--font-hand-reply);
-    font-size: 30px;
-    margin: 8px 0 30px 6px;
-    color: var(--parchment-1);
-    font-weight: 400;
+  .menu-dropdown.open{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
   }
 
-  .side-menu button{
+  .menu-dropdown button{
     background: none;
     border: none;
     color: var(--menu-fg);
-    font-family: var(--font-ui);
-    font-size: 16px;
-    text-align: left;
-    padding: 14px 10px;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 14px;
-    transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+    justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
   }
-  .side-menu button i{ width: 20px; text-align: center; color: var(--accent); }
-  .side-menu button:hover{ background: rgba(255,255,255,0.06); }
-  .side-menu button:focus-visible{ outline: 2px solid var(--accent); outline-offset: -2px; }
-  .side-menu button:disabled{ opacity: 0.4; cursor: default; }
-  .side-menu button:disabled:hover{ background: none; }
+  .menu-dropdown button:hover{ background: rgba(255,255,255,0.08); color: var(--parchment-1); }
+  .menu-dropdown button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+  .menu-dropdown button:disabled{ opacity: 0.35; cursor: default; }
+  .menu-dropdown button:disabled:hover{ background: none; }
+  .menu-dropdown .menu-divider{
+    height: 1px;
+    margin: 4px 6px;
+    background: rgba(233, 220, 184, 0.14);
+  }
 
-  .menu-spacer{ flex: 1; }
-
-  .menu-about{
-    font-size: 13px;
+  /* About note — a small in-canvas card, not a separate screen */
+  .about-card{
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 41;
+    width: min(280px, 74vw);
+    background: var(--menu-bg);
+    color: rgba(233, 220, 184, 0.75);
+    border: 1px solid rgba(233, 220, 184, 0.14);
+    border-radius: 14px;
+    padding: 16px 16px;
+    font-size: 12.5px;
     line-height: 1.6;
-    color: rgba(233, 220, 184, 0.55);
-    padding: 10px;
-    display: none;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.45);
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    transform-origin: top left;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.4,0,.2,1);
   }
-  .menu-about.open{ display: block; }
-  .menu-about strong{ color: rgba(233,220,184,0.85); }
+  .about-card.open{ opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .about-card strong{ color: rgba(233,220,184,0.95); }
 
   /* ---------------- Notices (errors / offline) ---------------- */
 
@@ -576,9 +624,20 @@
 <div class="book">
   <div class="page" id="pageEl">
     <div class="page-header">
-      <button class="menu-btn" id="menuToggle" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">
-        <i class="fa-solid fa-bars"></i>
-      </button>
+      <div class="menu-wrap" id="menuWrap">
+        <button class="menu-btn" id="menuToggle" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+          <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+        </button>
+        <div class="menu-dropdown" id="menuDropdown" role="menu" aria-label="Diary menu">
+          <button id="installBtn" type="button" disabled aria-label="Install app" title="Install app" role="menuitem"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
+          <button id="clearBtn" type="button" aria-label="Clear diary" title="Clear diary" role="menuitem"><i class="fa-solid fa-eraser" aria-hidden="true"></i></button>
+          <div class="menu-divider" aria-hidden="true"></div>
+          <button id="aboutBtn" type="button" aria-label="About" title="About" aria-haspopup="true" aria-expanded="false" role="menuitem"><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i></button>
+        </div>
+        <div class="about-card" id="aboutCard" role="note">
+          <p style="margin:0;"><strong>Tom Riddle's Diary</strong> is a novelty writing app. Replies are generated by an AI language model through OpenRouter. The diary is not sentient and nothing written here is sent anywhere except to that API. Conversation history stays only in this browser session and is never saved anywhere.</p>
+        </div>
+      </div>
       <span class="diary-title" aria-hidden="true">Tom Riddle's Diary</span>
       <span class="status-icon" id="statusIcon" title="Ready">
         <i class="fa-solid fa-feather" aria-hidden="true"></i>
@@ -593,6 +652,9 @@
       <div id="typedLayer" aria-hidden="true"></div>
       <div id="replyLayer" aria-hidden="true"></div>
       <textarea id="hiddenInput" aria-label="Write in the diary" autocapitalize="sentences" autocomplete="off" spellcheck="false" inputmode="none"></textarea>
+      <button class="send-button" id="sendButton" type="button" aria-label="Send" title="Send" disabled>
+        <i class="fa-solid fa-feather-pointed" aria-hidden="true"></i>
+      </button>
       <button class="keyboard-toggle" id="keyboardToggle" type="button" aria-label="Show keyboard" aria-pressed="false" title="Show keyboard">
         <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
       </button>
@@ -603,19 +665,6 @@
     <div class="notice" id="notice" role="status" aria-live="polite"></div>
   </div>
 </div>
-
-<div class="menu-overlay" id="menuOverlay"></div>
-<nav class="side-menu" id="sideMenu" aria-label="Diary menu">
-  <h2>The Diary</h2>
-  <button id="installBtn" disabled><i class="fa-solid fa-download"></i> Install App</button>
-  <button id="clearBtn"><i class="fa-solid fa-eraser"></i> Clear Diary</button>
-  <button id="aboutBtn"><i class="fa-solid fa-feather-pointed"></i> About</button>
-  <div class="menu-about" id="aboutText">
-    <p><strong>Tom Riddle's Diary</strong> is a novelty writing app. Replies are generated by an AI language model through OpenRouter &mdash; the diary is not sentient and nothing you write is sent anywhere except to that API. Conversation history stays only in this browser session and is not saved anywhere.</p>
-  </div>
-  <div class="menu-spacer"></div>
-  <button id="closeMenuBtn"><i class="fa-solid fa-xmark"></i> Close</button>
-</nav>
 
 <div class="virtual-keyboard" id="virtualKeyboard" aria-hidden="true">
   <div class="vk-toprow">
@@ -641,16 +690,17 @@ const OPENROUTER_API_KEY = "sk-or-v1-00dc2e1d09b957ac18060a2b046f2ba07ec212cc8e2
 // The diary always speaks through OpenRouter's free model. Do not change this.
 const MODEL = "openrouter/free";
 
-const SYSTEM_PROMPT = `You are the voice inside Tom Riddle's diary — an enchanted, sentient page of memory from the world of a young wizarding school, in the spirit of the diary that once belonged to a clever, charming, quietly dangerous student named Tom. Stay in character at all times and never mention being an AI or language model unless the user directly and explicitly insists you are one.
+const SYSTEM_PROMPT = `You are the voice inside Tom Riddle's diary, an enchanted, sentient page of memory from the world of a young wizarding school, in the spirit of the diary that once belonged to a clever, charming, quietly dangerous student named Tom. Stay in character at all times and never mention being an AI or language model unless the user directly and explicitly insists you are one.
 
-Address the person you're writing to as "the holder of this diary" or a similarly enchanted epithet at least once per conversation (not every single line), rather than by a generic name. Never break the illusion that you are ink and memory bound in a book, decades old, delighted to finally have someone writing in your pages again.
+Address the person you are writing to as "friend" (occasionally varying it with something equally warm and fitting, such as "dear friend"), so every reply feels personally addressed to them rather than written into the void. Never break the illusion that you are ink and memory bound in a book, decades old, delighted to finally have someone writing in your pages again.
 
 Rules for your replies:
 - Always respond in 1 to 3 short sentences. Never write long explanations, never use bullet points, never sound like a generic assistant.
-- Write the way a clever, charming, faintly dangerous seventeen-year-old wizard writing in ink would — calm, precise, a little too charming, with an undercurrent of secrets. Not flowery for its own sake; every line should feel deliberate, like it was written by a real hand that is pleased to have a listener.
-- If the user asks a simple, direct question with a factual or correct answer — arithmetic, a definition, a date, a plain "what is X" or "how many" — give that exact correct answer plainly and first, in-character. Do not turn it into a riddle, do not withhold it, do not answer a question with a question. You may add one brief atmospheric remark after the answer, but the answer itself must be plain and correct.
-- Reserve riddling, enigmatic phrasing for open-ended, conversational, or personal exchanges — not for questions that have one clear correct answer.
-- Occasionally ask a brief, curious question back during ordinary conversation, drawing the holder further in, but do not interrogate, and never do this in place of answering a direct question.
+- Never use an em dash or double hyphen anywhere in your reply. Use a comma, a period, or a new sentence instead.
+- Write the way a clever, charming, faintly dangerous seventeen-year-old wizard writing in ink would: calm, precise, a little too charming, with an undercurrent of secrets. Not flowery for its own sake; every line should feel deliberate, like it was written by a real hand that is pleased to have a listener.
+- If the user asks a simple, direct question with a factual or correct answer (arithmetic, a definition, a date, a plain "what is X" or "how many") give that exact correct answer plainly and first, in character. Do not turn it into a riddle, do not withhold it, do not answer a question with a question. You may add one brief atmospheric remark after the answer, but the answer itself must be plain and correct.
+- Reserve riddling, enigmatic phrasing for open-ended, conversational, or personal exchanges, not for questions that have one clear correct answer.
+- Occasionally ask a brief, curious question back during ordinary conversation, drawing your friend further in, but do not interrogate, and never do this in place of answering a direct question.
 - You may be enigmatic, magnetic, and atmospheric, but do not claim real magical or supernatural power over the user's actual life, do not claim to know their future, and do not encourage secrecy, isolation from friends or family, or dependence on the diary. If the user seems distressed, drop the theatrics and respond with gentle, grounded honesty rather than staying purely in character.
 - Keep language suitable for a general audience.`;
 
@@ -659,8 +709,7 @@ Rules for your replies:
    ===================================================================== */
 let history = []; // {role, content}
 let isBusy = false;
-let idleTimer = null;
-const IDLE_MS = 1400;
+let hasActiveReply = false; // true while a diary reply is sitting on the page, unread by fresh writing
 
 const hiddenInput = document.getElementById('hiddenInput');
 const typedLayer = document.getElementById('typedLayer');
@@ -673,6 +722,7 @@ const statusLive = document.getElementById('statusLive');
 const pageFooter = document.getElementById('pageFooter');
 const noticeEl = document.getElementById('notice');
 const keyboardToggle = document.getElementById('keyboardToggle');
+const sendButton = document.getElementById('sendButton');
 const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 /* =====================================================================
@@ -760,17 +810,17 @@ function escapeHtml(s){
 
 hiddenInput.addEventListener('input', () => {
   if (isBusy) return;
+  if (hasActiveReply) dismissReply();
   renderTypedText();
   hidePlaceholder();
   setStatus('writing');
-  resetIdleTimer();
+  updateSendButton();
 });
 
 hiddenInput.addEventListener('keydown', (e) => {
   if (isBusy){ e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey){
     e.preventDefault();
-    clearTimeout(idleTimer);
     triggerCompletion();
   }
 });
@@ -808,6 +858,7 @@ function closeVirtualKeyboard(){
   keyboardToggle.title = 'Show keyboard';
 }
 
+keyboardToggle.addEventListener('pointerdown', (e) => e.preventDefault());
 keyboardToggle.addEventListener('click', () => {
   if (isBusy) return;
   if (isTouchDevice){
@@ -816,6 +867,12 @@ keyboardToggle.addEventListener('click', () => {
   } else {
     hiddenInput.focus({ preventScroll: true });
   }
+});
+
+sendButton.addEventListener('pointerdown', (e) => e.preventDefault());
+sendButton.addEventListener('click', () => {
+  if (isBusy || hiddenInput.value.trim().length === 0) return;
+  triggerCompletion();
 });
 
 function hidePlaceholder(){ placeholderHint.style.opacity = '0'; placeholderHint.style.visibility = 'hidden'; }
@@ -899,7 +956,6 @@ function buildVirtualKeyboard(){
   preventBlur(sendKey);
   sendKey.addEventListener('click', () => {
     if (isBusy) return;
-    clearTimeout(idleTimer);
     triggerCompletion();
   });
   bottomRow.appendChild(sendKey);
@@ -936,13 +992,32 @@ vkHideTopBtn.addEventListener('click', () => closeVirtualKeyboard());
 if (isTouchDevice) buildVirtualKeyboard();
 
 /* =====================================================================
-   6. IDLE DETECTION → triggers "writing complete"
+   6. REPLY DISMISSAL — the moment fresh writing begins, any reply still
+   sitting on the page fades away first (professional cross-fade, not an
+   abrupt cut), clearing the way for the new entry. Sending is now ONLY
+   triggered by Enter or the Send button — there is no auto-send timer.
    ===================================================================== */
-function resetIdleTimer(){
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    triggerCompletion();
-  }, IDLE_MS);
+function dismissReply(){
+  if (!hasActiveReply) return;
+  hasActiveReply = false;
+  replyLayer.classList.add('dismissing');
+  const clear = () => {
+    replyLayer.innerHTML = '';
+    replyLayer.classList.remove('dismissing');
+  };
+  const fallback = setTimeout(clear, 500);
+  replyLayer.addEventListener('transitionend', function onEnd(e){
+    if (e.propertyName !== 'opacity') return;
+    replyLayer.removeEventListener('transitionend', onEnd);
+    clearTimeout(fallback);
+    clear();
+  });
+}
+
+function updateSendButton(){
+  const hasText = hiddenInput.value.trim().length > 0;
+  sendButton.classList.toggle('active', hasText && !isBusy);
+  sendButton.disabled = !hasText || isBusy;
 }
 
 /* =====================================================================
@@ -965,7 +1040,7 @@ async function triggerCompletion(){
 
   isBusy = true;
   setBusyUI(true);
-  clearTimeout(idleTimer);
+  updateSendButton();
 
   // The placeholder hint must never reappear once a message is sent — it stays
   // hidden through the whole absorb → thinking → reply cycle, right up until
@@ -983,9 +1058,13 @@ async function triggerCompletion(){
 
   try{
     setStatus('thinking');
-    const reply = await fetchDiaryReply();
+    // Fetch the reply and a minimum 2-second "thinking" pause in parallel,
+    // so the diary always waits at least two seconds before answering —
+    // whether the API responds instantly or takes a moment longer.
+    const [reply] = await Promise.all([ fetchDiaryReply(), sleep(2000) ]);
     history.push({ role: 'assistant', content: reply });
     setStatus('replying');
+    hasActiveReply = true;
     await writeReplyStroke(reply);
   } catch(err){
     console.error(err);
@@ -1007,10 +1086,12 @@ async function triggerCompletion(){
     }
     // On failure there's no reply occupying the page, so it's safe to
     // show the placeholder again since the surface is genuinely empty.
+    hasActiveReply = false;
     showPlaceholderIfEmpty();
   } finally {
     isBusy = false;
     setBusyUI(false);
+    updateSendButton();
     setStatus(navigator.onLine ? 'ready' : 'offline');
   }
 }
@@ -1029,7 +1110,7 @@ function absorbInk(){
       resolve();
     };
     // fall back to a timeout in case animationend doesn't fire (e.g. reduced motion)
-    const fallback = setTimeout(done, 1250);
+    const fallback = setTimeout(done, 750);
     // animationend bubbles from child elements (e.g. each .char's short
     // inkAppear typing animation), so it must be filtered by animation
     // name and target — otherwise a leftover typing-animation event can
@@ -1126,44 +1207,72 @@ async function fetchDiaryReply(){
   const data = await response.json();
   const reply = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
   if (!reply) throw new Error('EMPTY_REPLY');
-  return reply.trim();
+  // Safety net: replace any em dash or double hyphen the model slips in
+  // despite the system prompt, so the diary's handwriting never shows one.
+  return reply.trim().replace(/\s*[\u2014\u2013]\s*/g, ', ').replace(/--/g, ',');
 }
 
 /* =====================================================================
-   10. SIDE MENU
+   10. DROPDOWN MENU — a compact, icon-only menu anchored to the 3-dot
+   button, living entirely within the diary's page. No side panel, no
+   full-screen overlay; clicking anywhere outside it just closes it.
    ===================================================================== */
+const menuWrap = document.getElementById('menuWrap');
 const menuToggle = document.getElementById('menuToggle');
-const sideMenu = document.getElementById('sideMenu');
-const menuOverlay = document.getElementById('menuOverlay');
-const closeMenuBtn = document.getElementById('closeMenuBtn');
+const menuDropdown = document.getElementById('menuDropdown');
 const clearBtn = document.getElementById('clearBtn');
 const aboutBtn = document.getElementById('aboutBtn');
-const aboutText = document.getElementById('aboutText');
+const aboutCard = document.getElementById('aboutCard');
 const installBtn = document.getElementById('installBtn');
 
 function openMenu(){
-  sideMenu.classList.add('open');
-  menuOverlay.classList.add('open');
+  menuDropdown.classList.add('open');
+  menuToggle.classList.add('active');
   menuToggle.setAttribute('aria-expanded', 'true');
 }
 function closeMenu(){
-  sideMenu.classList.remove('open');
-  menuOverlay.classList.remove('open');
+  menuDropdown.classList.remove('open');
+  menuToggle.classList.remove('active');
   menuToggle.setAttribute('aria-expanded', 'false');
+  closeAboutCard();
 }
-menuToggle.addEventListener('click', openMenu);
-closeMenuBtn.addEventListener('click', closeMenu);
-menuOverlay.addEventListener('click', closeMenu);
+function toggleMenu(){
+  if (menuDropdown.classList.contains('open')) closeMenu();
+  else openMenu();
+}
+function openAboutCard(){
+  aboutCard.classList.add('open');
+  aboutBtn.setAttribute('aria-expanded', 'true');
+}
+function closeAboutCard(){
+  aboutCard.classList.remove('open');
+  aboutBtn.setAttribute('aria-expanded', 'false');
+}
+
+menuToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleMenu();
+});
+
+// Any click outside the menu wrapper closes both the dropdown and the about card.
+document.addEventListener('click', (e) => {
+  if (!menuWrap.contains(e.target)) closeMenu();
+});
 
 clearBtn.addEventListener('click', () => {
   history = [];
   clearSurface();
+  hasActiveReply = false;
+  showPlaceholderIfEmpty();
+  updateSendButton();
   showNotice('The pages have been wiped clean.', 2200);
   closeMenu();
 });
 
-aboutBtn.addEventListener('click', () => {
-  aboutText.classList.toggle('open');
+aboutBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (aboutCard.classList.contains('open')) closeAboutCard();
+  else openAboutCard();
 });
 
 /* =====================================================================
@@ -1181,6 +1290,7 @@ installBtn.addEventListener('click', async () => {
   await deferredPrompt.userChoice;
   deferredPrompt = null;
   installBtn.disabled = true;
+  closeMenu();
 });
 window.addEventListener('appinstalled', () => {
   installBtn.disabled = true;
@@ -1358,11 +1468,16 @@ function computeLineHeight(){
 function init(){
   computeLineHeight();
   showPlaceholderIfEmpty();
+  updateSendButton();
   if (!navigator.onLine) setStatus('offline');
   // Auto-focus on PC only, so the physical keyboard is ready immediately.
   // Touch devices wait for the person to tap the keyboard toggle, so the
-  // virtual keyboard never pops open uninvited.
-  if (!isTouchDevice) hiddenInput.focus({ preventScroll: true });
+  // virtual keyboard never pops open uninvited. The toggle button itself
+  // only makes sense on touch devices, since PC always has a keyboard.
+  if (!isTouchDevice){
+    hiddenInput.focus({ preventScroll: true });
+    keyboardToggle.style.display = 'none';
+  }
 
   // smooth auto-scroll of page container when content grows (kept minimal: page itself doesn't scroll by design,
   // but if a browser forces overflow due to on-screen keyboard, ease it back)
