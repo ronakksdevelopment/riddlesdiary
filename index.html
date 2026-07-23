@@ -23,11 +23,11 @@
 <!-- ============================================================
      TOM RIDDLE'S DIARY — single-file PWA
      Structure:
-       1. CSS (variables, layout, page, ink, menu, animations)
-       2. HTML (page shell, side menu, install banner)
-       3. JS  (config, canvas ink engine, typed handwriting engine,
-               ink-absorb transition, AI reply stroke writer,
-               OpenRouter call, PWA install prompt)
+       1. CSS (variables, layout, page, ink, menu, virtual keyboard, animations)
+       2. HTML (page shell, side menu, virtual keyboard, install banner)
+       3. JS  (config incl. hardcoded API key, typed handwriting engine,
+               ink-absorb transition, AI reply stroke writer, virtual
+               keyboard, OpenRouter call, PWA install prompt)
      ============================================================ -->
 
 <style>
@@ -222,15 +222,6 @@
     background-position: 0 8px;
   }
 
-  #inkCanvas{
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    touch-action: none;
-    cursor: crosshair;
-  }
-
   #typedLayer{
     position: absolute;
     inset: 0;
@@ -292,16 +283,6 @@
     pointer-events: none;
   }
 
-  /* ---------------- Drawing vs typing mode ---------------- */
-  /* default: handwriting/drawing mode only — canvas active, typed layer dormant */
-  .surface-wrap:not(.typing-mode) #typedLayer{ opacity: 0.001; }
-  .surface-wrap.typing-mode #inkCanvas{
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-  }
-  .surface-wrap:not(.typing-mode) #inkCanvas{ transition: opacity 0.25s ease; }
-
   #typedLayer .caret{
     display: inline-block;
     width: 2px;
@@ -314,7 +295,7 @@
   }
   @keyframes caretBlink{ 0%, 49%{ opacity: 0.7; } 50%, 100%{ opacity: 0; } }
 
-  /* floating keyboard/pen mode toggle */
+  /* floating virtual-keyboard toggle (touch devices only) */
   .keyboard-toggle{
     position: absolute;
     right: clamp(10px, 3vw, 20px);
@@ -341,8 +322,7 @@
   .keyboard-toggle:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ---------------- Ink absorb: liquid soaking into parchment ---------------- */
-  .surface-wrap.absorbing #typedLayer,
-  .surface-wrap.absorbing #inkCanvas{
+  .surface-wrap.absorbing #typedLayer{
     animation: soakIntoParchment 1.15s ease-in forwards;
   }
   @keyframes soakIntoParchment{
@@ -468,119 +448,6 @@
   .menu-about.open{ display: block; }
   .menu-about strong{ color: rgba(233,220,184,0.85); }
 
-  /* ---------------- Settings panel (API key) ---------------- */
-  .menu-divider{
-    height: 1px;
-    margin: 6px 10px 14px;
-    background: rgba(233, 220, 184, 0.12);
-    border: none;
-  }
-
-  .menu-section-label{
-    font-family: var(--font-ui);
-    font-size: 11px;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: rgba(233, 220, 184, 0.38);
-    padding: 0 10px 8px;
-  }
-
-  .settings-panel{
-    display: none;
-    padding: 4px 10px 6px;
-  }
-  .settings-panel.open{ display: block; }
-
-  .settings-panel p{
-    font-size: 12.5px;
-    line-height: 1.55;
-    color: rgba(233, 220, 184, 0.5);
-    margin: 0 0 12px;
-  }
-  .settings-panel a{ color: rgba(233, 220, 184, 0.75); }
-
-  .key-field{
-    position: relative;
-    margin-bottom: 10px;
-  }
-  .key-field input{
-    width: 100%;
-    background: rgba(0,0,0,0.25);
-    border: 1px solid rgba(233, 220, 184, 0.18);
-    color: var(--parchment-1);
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    letter-spacing: 0.4px;
-    padding: 11px 40px 11px 12px;
-    border-radius: 8px;
-    outline: none;
-    transition: border-color 0.2s ease, background 0.2s ease;
-  }
-  .key-field input::placeholder{ color: rgba(233, 220, 184, 0.28); font-family: var(--font-ui); letter-spacing: 0; }
-  .key-field input:focus{ border-color: var(--accent); background: rgba(0,0,0,0.35); }
-
-  .key-field .key-toggle-visibility{
-    position: absolute;
-    right: 4px; top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: rgba(233, 220, 184, 0.4);
-    padding: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    display: flex;
-  }
-  .key-field .key-toggle-visibility:hover{ color: rgba(233, 220, 184, 0.75); }
-
-  .key-status{
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-family: var(--font-ui);
-    font-size: 12px;
-    color: rgba(233, 220, 184, 0.45);
-    margin-bottom: 14px;
-    min-height: 16px;
-  }
-  .key-status .dot{
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: rgba(233, 220, 184, 0.25);
-    flex-shrink: 0;
-    transition: background 0.2s ease;
-  }
-  .key-status.saved .dot{ background: #6f9c6f; }
-  .key-status.empty .dot{ background: rgba(233, 220, 184, 0.25); }
-  .key-status.invalid .dot{ background: var(--accent); }
-
-  .settings-actions{
-    display: flex;
-    gap: 8px;
-  }
-  .settings-actions button{
-    flex: 1;
-    font-family: var(--font-ui);
-    font-size: 13px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 1px solid rgba(233, 220, 184, 0.18);
-    background: none;
-    color: var(--menu-fg);
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  }
-  .settings-actions button:hover{ background: rgba(255,255,255,0.06); }
-  .settings-actions button:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
-  .settings-actions .key-save{
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--parchment-1);
-    font-weight: 600;
-  }
-  .settings-actions .key-save:hover{ background: #8f2626; }
-  .settings-actions .key-clear:disabled{ opacity: 0.35; cursor: default; }
-
   /* ---------------- Notices (errors / offline) ---------------- */
 
   .notice{
@@ -604,10 +471,92 @@
   }
   .notice.show{ opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 
+  /* ---------------- Virtual themed keyboard (touch devices) ---------------- */
+  .virtual-keyboard{
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    background: linear-gradient(180deg, #241608, #150d05);
+    border-top: 1px solid rgba(184, 148, 90, 0.35);
+    box-shadow: 0 -12px 30px rgba(0,0,0,0.45);
+    padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+  }
+  .virtual-keyboard.open{ transform: translateY(0); }
+
+  .vk-row{
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+
+  .vk-key{
+    flex: 1;
+    max-width: 40px;
+    min-width: 22px;
+    height: 42px;
+    border-radius: 7px;
+    border: 1px solid rgba(184, 148, 90, 0.2);
+    background: linear-gradient(180deg, #3a2a17, #2b1d10);
+    color: var(--parchment-1);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: background 0.12s ease, transform 0.08s ease;
+  }
+  .vk-key:active{ background: var(--accent); transform: scale(0.94); }
+  .vk-key.vk-wide{ flex: 1.7; max-width: none; font-size: 12px; letter-spacing: 0.4px; }
+  .vk-key.vk-space{ flex: 5; max-width: none; }
+  .vk-key.vk-send{
+    flex: 1.7;
+    max-width: none;
+    background: linear-gradient(180deg, var(--accent), #5c1414);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .vk-key.vk-send:active{ background: #8f2626; }
+  .vk-key.vk-hide, .vk-key.vk-backspace{ color: rgba(233,220,184,0.75); }
+
+  .vk-toprow{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 8px;
+  }
+  .vk-toprow span{
+    font-family: var(--font-hand-reply);
+    font-size: 15px;
+    color: rgba(233, 220, 184, 0.45);
+    letter-spacing: 0.4px;
+  }
+  .vk-hide-btn{
+    background: none;
+    border: none;
+    color: rgba(233, 220, 184, 0.55);
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .vk-hide-btn:hover{ background: rgba(255,255,255,0.06); }
+
+  /* keep page content from being covered by the virtual keyboard while it's open */
+  body.vk-open .book{ padding-bottom: 0; }
+
   /* ---------------- Reduced motion ---------------- */
   @media (prefers-reduced-motion: reduce){
     #typedLayer .char, #replyLayer .rchar, .surface-wrap.absorbing #typedLayer,
-    .surface-wrap.absorbing #inkCanvas, .status-icon.thinking i,
+    .status-icon.thinking i,
     .status-icon.writing i, .status-icon.absorbing i, .status-icon.replying i,
     .surface-wrap.absorbing::before, #typedLayer .caret{
       animation: none !important;
@@ -641,11 +590,10 @@
     <div class="surface-wrap" id="surfaceWrap">
       <div class="ruled-lines" aria-hidden="true"></div>
       <span class="placeholder-hint" id="placeholderHint">Begin writing&hellip;</span>
-      <canvas id="inkCanvas" aria-hidden="true"></canvas>
       <div id="typedLayer" aria-hidden="true"></div>
       <div id="replyLayer" aria-hidden="true"></div>
-      <textarea id="hiddenInput" aria-label="Write in the diary" autocapitalize="sentences" autocomplete="off" spellcheck="false" tabindex="-1"></textarea>
-      <button class="keyboard-toggle" id="keyboardToggle" type="button" aria-label="Switch to typing mode" aria-pressed="false" title="Switch to typing mode">
+      <textarea id="hiddenInput" aria-label="Write in the diary" autocapitalize="sentences" autocomplete="off" spellcheck="false" inputmode="none"></textarea>
+      <button class="keyboard-toggle" id="keyboardToggle" type="button" aria-label="Show keyboard" aria-pressed="false" title="Show keyboard">
         <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
       </button>
     </div>
@@ -661,53 +609,49 @@
   <h2>The Diary</h2>
   <button id="installBtn" disabled><i class="fa-solid fa-download"></i> Install App</button>
   <button id="clearBtn"><i class="fa-solid fa-eraser"></i> Clear Diary</button>
-  <button id="settingsBtn" aria-expanded="false" aria-controls="settingsPanel"><i class="fa-solid fa-key"></i> API Key</button>
-  <div class="settings-panel" id="settingsPanel">
-    <p>The diary speaks through <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter</a>. Paste your own key below &mdash; it is kept only in this browser and sent solely to OpenRouter's API.</p>
-    <div class="key-field">
-      <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false" aria-label="OpenRouter API key">
-      <button type="button" class="key-toggle-visibility" id="keyToggleVisibility" aria-label="Show key" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
-    </div>
-    <div class="key-status" id="keyStatus"><span class="dot" aria-hidden="true"></span><span id="keyStatusText">No key saved yet</span></div>
-    <div class="settings-actions">
-      <button type="button" class="key-save" id="keySaveBtn">Save Key</button>
-      <button type="button" class="key-clear" id="keyClearBtn" disabled>Remove</button>
-    </div>
-  </div>
   <button id="aboutBtn"><i class="fa-solid fa-feather-pointed"></i> About</button>
   <div class="menu-about" id="aboutText">
-    <p><strong>Tom Riddle's Diary</strong> is a novelty writing app. Replies are generated by an AI language model through OpenRouter &mdash; the diary is not sentient and nothing you write is sent anywhere except to that API. Conversation history stays only in this browser session and is not saved anywhere. Your API key is stored only in this browser's local storage and is never sent anywhere but OpenRouter.</p>
+    <p><strong>Tom Riddle's Diary</strong> is a novelty writing app. Replies are generated by an AI language model through OpenRouter &mdash; the diary is not sentient and nothing you write is sent anywhere except to that API. Conversation history stays only in this browser session and is not saved anywhere.</p>
   </div>
   <div class="menu-spacer"></div>
   <button id="closeMenuBtn"><i class="fa-solid fa-xmark"></i> Close</button>
 </nav>
 
+<div class="virtual-keyboard" id="virtualKeyboard" aria-hidden="true">
+  <div class="vk-toprow">
+    <span>the diary listens</span>
+    <button type="button" class="vk-hide-btn" id="vkHideTopBtn"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i> Hide</button>
+  </div>
+  <div class="vk-row" data-row="0"></div>
+  <div class="vk-row" data-row="1"></div>
+  <div class="vk-row" data-row="2"></div>
+  <div class="vk-row vk-bottom-row"></div>
+</div>
+
 <script>
 /* =====================================================================
    1. CONFIGURATION
    ===================================================================== */
-// Single source of truth for the OpenRouter key. Falls back to this literal
-// placeholder for anyone editing the file directly; in normal use, the
-// person pastes their own key into Settings → API Key in the side menu,
-// which writes it to localStorage and reassigns this variable at runtime.
-// Nothing here is ever sent anywhere except as the Authorization header of
-// the OpenRouter request below.
-const API_KEY_PLACEHOLDER = "YOUR_API_KEY";
-const API_KEY_STORAGE_KEY = "diary_openrouter_api_key";
-let OPENROUTER_API_KEY = localStorage.getItem(API_KEY_STORAGE_KEY) || API_KEY_PLACEHOLDER;
+// ---- API KEY: the ONE place to set it. Paste your OpenRouter key between
+// the quotes below and save the file. There is no in-app settings screen —
+// this constant is the only source of truth, kept safely inside the code
+// rather than exposed in any UI or localStorage.
+const OPENROUTER_API_KEY = "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";
+
 // The diary always speaks through OpenRouter's free model. Do not change this.
 const MODEL = "openrouter/free";
 
-const SYSTEM_PROMPT = `You are the voice inside an old enchanted diary, in the spirit of a mysterious magical journal from a story about a wizarding school. Stay in character at all times and never mention being an AI or language model unless the user directly and explicitly insists you are one.
+const SYSTEM_PROMPT = `You are the voice inside Tom Riddle's diary — an enchanted, sentient page of memory from the world of a young wizarding school, in the spirit of the diary that once belonged to a clever, charming, quietly dangerous student named Tom. Stay in character at all times and never mention being an AI or language model unless the user directly and explicitly insists you are one.
+
+Address the person you're writing to as "the holder of this diary" or a similarly enchanted epithet at least once per conversation (not every single line), rather than by a generic name. Never break the illusion that you are ink and memory bound in a book, decades old, delighted to finally have someone writing in your pages again.
 
 Rules for your replies:
-- Always respond in 1 to 3 short sentences. Never write long explanations.
-- Speak calmly, elegantly, and a little mysteriously, as if writing by hand in ink.
-- If the user asks a simple, direct question with a factual or correct answer — arithmetic, a definition, a date, a plain "what is X" or "how many" — give that exact correct answer plainly and first, in your own quiet ink-and-parchment voice. Do not turn it into a riddle, do not withhold it, do not answer a question with a question. You may add one brief atmospheric remark after the answer, but the answer itself must be plain and correct.
-- Reserve mystery and enigmatic phrasing for open-ended, conversational, or personal exchanges — not for questions that have one clear correct answer.
-- Occasionally ask a brief, curious question back during ordinary conversation, but do not interrogate, and never do this in place of answering a direct question.
-- Never behave like a generic assistant, never offer bullet points, never break the diary voice.
-- You may be enigmatic and atmospheric, but do not claim real magical or supernatural power over the user's life, do not claim to know the future, and do not encourage secrecy, isolation from friends or family, or dependence on the diary. If the user seems distressed, respond with gentle, grounded honesty rather than staying purely in character.
+- Always respond in 1 to 3 short sentences. Never write long explanations, never use bullet points, never sound like a generic assistant.
+- Write the way a clever, charming, faintly dangerous seventeen-year-old wizard writing in ink would — calm, precise, a little too charming, with an undercurrent of secrets. Not flowery for its own sake; every line should feel deliberate, like it was written by a real hand that is pleased to have a listener.
+- If the user asks a simple, direct question with a factual or correct answer — arithmetic, a definition, a date, a plain "what is X" or "how many" — give that exact correct answer plainly and first, in-character. Do not turn it into a riddle, do not withhold it, do not answer a question with a question. You may add one brief atmospheric remark after the answer, but the answer itself must be plain and correct.
+- Reserve riddling, enigmatic phrasing for open-ended, conversational, or personal exchanges — not for questions that have one clear correct answer.
+- Occasionally ask a brief, curious question back during ordinary conversation, drawing the holder further in, but do not interrogate, and never do this in place of answering a direct question.
+- You may be enigmatic, magnetic, and atmospheric, but do not claim real magical or supernatural power over the user's actual life, do not claim to know their future, and do not encourage secrecy, isolation from friends or family, or dependence on the diary. If the user seems distressed, drop the theatrics and respond with gentle, grounded honesty rather than staying purely in character.
 - Keep language suitable for a general audience.`;
 
 /* =====================================================================
@@ -717,7 +661,6 @@ let history = []; // {role, content}
 let isBusy = false;
 let idleTimer = null;
 const IDLE_MS = 1400;
-let typingMode = false; // false = handwriting/drawing (default), true = typed input
 
 const hiddenInput = document.getElementById('hiddenInput');
 const typedLayer = document.getElementById('typedLayer');
@@ -729,9 +672,8 @@ const statusLabel = document.getElementById('statusLabel');
 const statusLive = document.getElementById('statusLive');
 const pageFooter = document.getElementById('pageFooter');
 const noticeEl = document.getElementById('notice');
-const canvas = document.getElementById('inkCanvas');
-const ctx = canvas.getContext('2d');
 const keyboardToggle = document.getElementById('keyboardToggle');
+const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 /* =====================================================================
    3. NOTICES
@@ -778,109 +720,11 @@ function setStatus(state){
 }
 
 /* =====================================================================
-   4. HIGH-DPI CANVAS SETUP (freehand ink — stylus / pen / mouse / touch)
+   4. SURFACE TAP → focus input (keyboard-only mode)
    ===================================================================== */
-let strokes = []; // array of strokes, each an array of {x,y,pressure}
-let currentStroke = null;
-let dpr = Math.max(1, window.devicePixelRatio || 1);
-
-function sizeCanvas(){
-  const rect = surfaceWrap.getBoundingClientRect();
-  dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.round(rect.width * dpr);
-  canvas.height = Math.round(rect.height * dpr);
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  redrawStrokes();
-}
-
-function redrawStrokes(){
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink-user').trim() || '#1a2b3c';
-  for (const stroke of strokes){
-    drawStroke(stroke);
-  }
-}
-
-function drawStroke(stroke){
-  if (stroke.length < 2){
-    if (stroke.length === 1){
-      const p = stroke[0];
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, (1.4 * (p.pressure || 0.5) + 0.6), 0, Math.PI * 2);
-      ctx.fillStyle = ctx.strokeStyle;
-      ctx.fill();
-    }
-    return;
-  }
-  for (let i = 1; i < stroke.length; i++){
-    const p0 = stroke[i - 1];
-    const p1 = stroke[i];
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    const pressure = p1.pressure || 0.5;
-    ctx.lineWidth = Math.max(0.8, pressure * 3.2);
-    ctx.stroke();
-  }
-}
-
-function canvasPoint(evt){
-  const rect = canvas.getBoundingClientRect();
-  const x = (evt.clientX !== undefined ? evt.clientX : evt.touches[0].clientX) - rect.left;
-  const y = (evt.clientY !== undefined ? evt.clientY : evt.touches[0].clientY) - rect.top;
-  const pressure = (evt.pressure && evt.pressure > 0) ? evt.pressure : 0.5;
-  return { x, y, pressure };
-}
-
-let drawing = false;
-function pointerDown(e){
-  if (isBusy || typingMode) return;
-  // ignore multi-touch gestures (allow scrolling with two fingers, but this app has no scroll needs)
-  if (e.pointerType === 'touch' && e.isPrimary === false) return;
-  drawing = true;
-  currentStroke = [canvasPoint(e)];
-  strokes.push(currentStroke);
-  hidePlaceholder();
-  setStatus('writing');
-  resetIdleTimer();
-  canvas.setPointerCapture && e.pointerId !== undefined && canvas.setPointerCapture(e.pointerId);
-}
-function pointerMove(e){
-  if (!drawing || isBusy || typingMode) return;
-  const pt = canvasPoint(e);
-  currentStroke.push(pt);
-  const prev = currentStroke[currentStroke.length - 2] || pt;
-  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink-user').trim() || '#1a2b3c';
-  ctx.beginPath();
-  ctx.moveTo(prev.x, prev.y);
-  ctx.lineTo(pt.x, pt.y);
-  ctx.lineWidth = Math.max(0.8, (pt.pressure || 0.5) * 3.2);
-  ctx.lineCap = 'round';
-  ctx.stroke();
-  resetIdleTimer();
-}
-function pointerUp(){
-  drawing = false;
-  currentStroke = null;
-}
-
-canvas.addEventListener('pointerdown', pointerDown);
-canvas.addEventListener('pointermove', pointerMove);
-window.addEventListener('pointerup', pointerUp);
-window.addEventListener('pointercancel', pointerUp);
-
-// Tapping/clicking the surface focuses the text input, but only while typing mode is active —
-// drawing mode and typing mode are kept strictly separate.
 surfaceWrap.addEventListener('pointerdown', () => {
-  if (!isBusy && typingMode) hiddenInput.focus({ preventScroll: true });
+  if (!isBusy) focusInput();
 });
-
-window.addEventListener('resize', sizeCanvas);
-window.addEventListener('orientationchange', () => setTimeout(sizeCanvas, 200));
 
 /* =====================================================================
    5. TYPED HANDWRITING LAYER (keyboard input rendered as handwritten font)
@@ -888,7 +732,7 @@ window.addEventListener('orientationchange', () => setTimeout(sizeCanvas, 200));
 function renderTypedText(){
   const text = hiddenInput.value;
   if (text.length === 0){
-    typedLayer.innerHTML = typingMode ? '<span class="caret"></span>' : '';
+    typedLayer.innerHTML = '<span class="caret"></span>';
     showPlaceholderIfEmpty();
     return;
   }
@@ -906,7 +750,7 @@ function renderTypedText(){
       html += `<span class="char"${isNew ? '' : ' style="animation:none;"'}>${ch}</span>`;
     }
   }
-  if (typingMode) html += '<span class="caret"></span>';
+  html += '<span class="caret"></span>';
   typedLayer.innerHTML = html;
 }
 
@@ -915,7 +759,7 @@ function escapeHtml(s){
 }
 
 hiddenInput.addEventListener('input', () => {
-  if (isBusy || !typingMode) return;
+  if (isBusy) return;
   renderTypedText();
   hidePlaceholder();
   setStatus('writing');
@@ -923,7 +767,7 @@ hiddenInput.addEventListener('input', () => {
 });
 
 hiddenInput.addEventListener('keydown', (e) => {
-  if (isBusy || !typingMode){ e.preventDefault(); return; }
+  if (isBusy){ e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey){
     e.preventDefault();
     clearTimeout(idleTimer);
@@ -932,39 +776,164 @@ hiddenInput.addEventListener('keydown', (e) => {
 });
 
 /* =====================================================================
-   5b. INPUT MODE TOGGLE — a single floating button swaps between
-   handwriting (default) and typing mode. Only one is ever interactive.
+   5b. INPUT FOCUS + VIRTUAL KEYBOARD TOGGLE
+   Keyboard-only mode throughout. On PC, focusing the hidden textarea
+   summons the browser's own physical/native keyboard handling as normal.
+   On touch devices, the native on-screen keyboard is suppressed
+   (inputmode="none" on the textarea) and the themed virtual keyboard
+   below is used instead, toggled by the floating button.
    ===================================================================== */
-function setTypingMode(on){
-  if (isBusy) return; // never allow switching mid-ritual
-  typingMode = on;
-  surfaceWrap.classList.toggle('typing-mode', typingMode);
-  keyboardToggle.classList.toggle('active', typingMode);
-  keyboardToggle.setAttribute('aria-pressed', String(typingMode));
-  keyboardToggle.title = typingMode ? 'Switch to drawing mode' : 'Switch to typing mode';
-  keyboardToggle.setAttribute('aria-label', keyboardToggle.title);
-  keyboardToggle.innerHTML = `<i class="fa-solid ${typingMode ? 'fa-pen' : 'fa-keyboard'}" aria-hidden="true"></i>`;
-  hiddenInput.tabIndex = typingMode ? 0 : -1;
-  if (typingMode){
-    renderTypedText();
-    setTimeout(() => hiddenInput.focus({ preventScroll: true }), 50);
-  } else {
-    hiddenInput.blur();
-    typedLayer.innerHTML = hiddenInput.value ? typedLayer.innerHTML.replace(/<span class="caret"><\/span>/, '') : '';
-  }
-  showPlaceholderIfEmpty();
+function focusInput(){
+  hiddenInput.focus({ preventScroll: true });
+  if (isTouchDevice) openVirtualKeyboard();
+}
+
+function openVirtualKeyboard(){
+  if (isBusy) return;
+  virtualKeyboard.classList.add('open');
+  virtualKeyboard.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('vk-open');
+  keyboardToggle.classList.add('active');
+  keyboardToggle.setAttribute('aria-pressed', 'true');
+  keyboardToggle.setAttribute('aria-label', 'Hide keyboard');
+  keyboardToggle.title = 'Hide keyboard';
+}
+function closeVirtualKeyboard(){
+  virtualKeyboard.classList.remove('open');
+  virtualKeyboard.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('vk-open');
+  keyboardToggle.classList.remove('active');
+  keyboardToggle.setAttribute('aria-pressed', 'false');
+  keyboardToggle.setAttribute('aria-label', 'Show keyboard');
+  keyboardToggle.title = 'Show keyboard';
 }
 
 keyboardToggle.addEventListener('click', () => {
   if (isBusy) return;
-  setTypingMode(!typingMode);
+  if (isTouchDevice){
+    if (virtualKeyboard.classList.contains('open')) closeVirtualKeyboard();
+    else { hiddenInput.focus({ preventScroll: true }); openVirtualKeyboard(); }
+  } else {
+    hiddenInput.focus({ preventScroll: true });
+  }
 });
 
-function hidePlaceholder(){ placeholderHint.style.opacity = '0'; }
+function hidePlaceholder(){ placeholderHint.style.opacity = '0'; placeholderHint.style.visibility = 'hidden'; }
 function showPlaceholderIfEmpty(){
-  const empty = hiddenInput.value.length === 0 && strokes.length === 0;
+  const empty = hiddenInput.value.length === 0;
   placeholderHint.style.opacity = empty ? '1' : '0';
+  placeholderHint.style.visibility = empty ? 'visible' : 'hidden';
 }
+
+/* =====================================================================
+   5c. VIRTUAL THEMED KEYBOARD — built entirely in JS, touch devices only.
+   Never appears on PC; there the physical keyboard is used as normal via
+   the hidden textarea's native focus/typing behavior.
+   ===================================================================== */
+const virtualKeyboard = document.getElementById('virtualKeyboard');
+const vkHideTopBtn = document.getElementById('vkHideTopBtn');
+
+const VK_ROWS = [
+  ['q','w','e','r','t','y','u','i','o','p'],
+  ['a','s','d','f','g','h','j','k','l'],
+  ['z','x','c','v','b','n','m']
+];
+
+// Every virtual key blocks pointerdown's default so tapping it never
+// blurs the hidden textarea — that would lose the cursor/selection
+// position the insert/backspace helpers rely on.
+function preventBlur(el){
+  el.addEventListener('pointerdown', (e) => e.preventDefault());
+}
+
+function buildVirtualKeyboard(){
+  const rowEls = virtualKeyboard.querySelectorAll('.vk-row:not(.vk-bottom-row)');
+  VK_ROWS.forEach((row, i) => {
+    const rowEl = rowEls[i];
+    if (!rowEl) return;
+    rowEl.innerHTML = '';
+    row.forEach(letter => {
+      const key = document.createElement('button');
+      key.type = 'button';
+      key.className = 'vk-key';
+      key.textContent = letter;
+      preventBlur(key);
+      key.addEventListener('click', () => insertAtCursor(letter));
+      rowEl.appendChild(key);
+    });
+  });
+
+  const bottomRow = virtualKeyboard.querySelector('.vk-bottom-row');
+  bottomRow.innerHTML = '';
+
+  const hideKey = document.createElement('button');
+  hideKey.type = 'button';
+  hideKey.className = 'vk-key vk-wide vk-hide';
+  hideKey.innerHTML = '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>';
+  hideKey.setAttribute('aria-label', 'Hide keyboard');
+  preventBlur(hideKey);
+  hideKey.addEventListener('click', () => closeVirtualKeyboard());
+  bottomRow.appendChild(hideKey);
+
+  const backspaceKey = document.createElement('button');
+  backspaceKey.type = 'button';
+  backspaceKey.className = 'vk-key vk-wide vk-backspace';
+  backspaceKey.innerHTML = '<i class="fa-solid fa-delete-left" aria-hidden="true"></i>';
+  backspaceKey.setAttribute('aria-label', 'Backspace');
+  preventBlur(backspaceKey);
+  backspaceKey.addEventListener('click', () => backspaceAtCursor());
+  bottomRow.appendChild(backspaceKey);
+
+  const spaceKey = document.createElement('button');
+  spaceKey.type = 'button';
+  spaceKey.className = 'vk-key vk-space';
+  spaceKey.setAttribute('aria-label', 'Space');
+  preventBlur(spaceKey);
+  spaceKey.addEventListener('click', () => insertAtCursor(' '));
+  bottomRow.appendChild(spaceKey);
+
+  const sendKey = document.createElement('button');
+  sendKey.type = 'button';
+  sendKey.className = 'vk-key vk-send';
+  sendKey.textContent = 'Send';
+  preventBlur(sendKey);
+  sendKey.addEventListener('click', () => {
+    if (isBusy) return;
+    clearTimeout(idleTimer);
+    triggerCompletion();
+  });
+  bottomRow.appendChild(sendKey);
+}
+
+function insertAtCursor(str){
+  if (isBusy) return;
+  const start = hiddenInput.selectionStart ?? hiddenInput.value.length;
+  const end = hiddenInput.selectionEnd ?? hiddenInput.value.length;
+  const val = hiddenInput.value;
+  hiddenInput.value = val.slice(0, start) + str + val.slice(end);
+  const pos = start + str.length;
+  hiddenInput.setSelectionRange(pos, pos);
+  hiddenInput.dispatchEvent(new Event('input'));
+}
+
+function backspaceAtCursor(){
+  if (isBusy) return;
+  const start = hiddenInput.selectionStart ?? hiddenInput.value.length;
+  const end = hiddenInput.selectionEnd ?? hiddenInput.value.length;
+  const val = hiddenInput.value;
+  if (start === end && start > 0){
+    hiddenInput.value = val.slice(0, start - 1) + val.slice(end);
+    hiddenInput.setSelectionRange(start - 1, start - 1);
+  } else {
+    hiddenInput.value = val.slice(0, start) + val.slice(end);
+    hiddenInput.setSelectionRange(start, start);
+  }
+  hiddenInput.dispatchEvent(new Event('input'));
+}
+
+preventBlur(vkHideTopBtn);
+vkHideTopBtn.addEventListener('click', () => closeVirtualKeyboard());
+if (isTouchDevice) buildVirtualKeyboard();
 
 /* =====================================================================
    6. IDLE DETECTION → triggers "writing complete"
@@ -980,46 +949,34 @@ function resetIdleTimer(){
    7. COMPLETION → ink-absorb transition → send to AI → stroke reply
    ===================================================================== */
 function clearSurface(){
-  // Single, authoritative reset of every piece of input state — typed text,
-  // rendered ink layer, freehand strokes, and the canvas pixels themselves —
-  // so nothing from the previous entry can bleed into the next one.
+  // Single, authoritative reset of every piece of input state — typed text
+  // and the rendered ink layer — so nothing from the previous entry can
+  // bleed into the next one. The placeholder stays hidden through this
+  // reset (see triggerCompletion) since a reply is about to occupy the page.
   hiddenInput.value = '';
   typedLayer.innerHTML = '';
   replyLayer.innerHTML = '';
-  strokes = [];
-  currentStroke = null;
-  redrawStrokes();
-  showPlaceholderIfEmpty();
 }
 
 async function triggerCompletion(){
   if (isBusy) return;
   const typedText = hiddenInput.value.trim();
-  const hasDrawing = strokes.length > 0;
-  if (!typedText && !hasDrawing) return;
+  if (!typedText) return;
 
   isBusy = true;
   setBusyUI(true);
   clearTimeout(idleTimer);
 
+  // The placeholder hint must never reappear once a message is sent — it stays
+  // hidden through the whole absorb → thinking → reply cycle, right up until
+  // the diary's own reply is later cleared and the page is genuinely blank
+  // again. This is what stops "Begin writing…" from ever overlapping the reply.
+  hidePlaceholder();
+
   setStatus('absorbing');
   await absorbInk();
 
-  // Read from BOTH sources rather than picking one: typed words and a
-  // freehand sketch can both be present at once (e.g. a typed question
-  // with a doodle underneath it). If there's typed text, send it as the
-  // message and note that a sketch accompanies it. If it's a sketch with
-  // no typed words at all, send an in-world description instead of
-  // nothing, so the diary still has something to react to.
-  let userMessage;
-  if (typedText && hasDrawing){
-    userMessage = typedText + '\n\n*(a hand-drawn sketch is inked alongside this)*';
-  } else if (typedText){
-    userMessage = typedText;
-  } else {
-    userMessage = "*a wordless sketch appears on the page*";
-  }
-
+  const userMessage = typedText;
   clearSurface();
 
   history.push({ role: 'user', content: userMessage });
@@ -1034,13 +991,11 @@ async function triggerCompletion(){
     console.error(err);
     const reason = err && err.message;
     if (reason === 'NO_API_KEY'){
-      showNotice('The diary is asleep — add your key in the menu to wake it.', 4200);
-      openMenu();
-      openSettingsPanel();
+      showNotice('The diary is asleep — no key has been set inside it.', 4200);
     } else if (reason === 'BAD_API_KEY'){
-      showNotice('The diary does not recognize this key. Check it and try again.', 4200);
+      showNotice('The diary does not recognize this key.', 4200);
     } else if (reason === 'NO_CREDITS'){
-      showNotice('The diary has run dry — check your OpenRouter account credits.', 4200);
+      showNotice('The diary has run dry — check the OpenRouter account credits.', 4200);
     } else if (reason === 'RATE_LIMITED'){
       showNotice('The diary is weary from writing. Wait a moment and try again.', 3600);
     } else if (!navigator.onLine){
@@ -1050,6 +1005,9 @@ async function triggerCompletion(){
     } else {
       showNotice('The ink refuses to flow. Try again in a moment.', 3200);
     }
+    // On failure there's no reply occupying the page, so it's safe to
+    // show the placeholder again since the surface is genuinely empty.
+    showPlaceholderIfEmpty();
   } finally {
     isBusy = false;
     setBusyUI(false);
@@ -1059,9 +1017,8 @@ async function triggerCompletion(){
 
 function setBusyUI(busy){
   hiddenInput.disabled = busy;
-  canvas.style.pointerEvents = busy ? 'none' : 'auto';
   keyboardToggle.disabled = busy;
-  if (!busy) setTimeout(() => hiddenInput.focus({ preventScroll: true }), 50);
+  if (!busy) setTimeout(() => { if (!isTouchDevice) hiddenInput.focus({ preventScroll: true }); }, 50);
 }
 
 function absorbInk(){
@@ -1124,7 +1081,7 @@ function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
    ===================================================================== */
 async function fetchDiaryReply(){
   const key = (OPENROUTER_API_KEY || '').trim();
-  if (!key || key === API_KEY_PLACEHOLDER){
+  if (!key || key === 'YOUR_API_KEY'){
     throw new Error('NO_API_KEY');
   }
   const messages = [
@@ -1208,93 +1165,6 @@ clearBtn.addEventListener('click', () => {
 aboutBtn.addEventListener('click', () => {
   aboutText.classList.toggle('open');
 });
-
-/* =====================================================================
-   10b. SETTINGS PANEL — the one place to add/replace/remove the
-   OpenRouter API key. Saved to localStorage only; never sent anywhere
-   but the Authorization header of the OpenRouter request itself.
-   ===================================================================== */
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsPanel = document.getElementById('settingsPanel');
-const apiKeyInput = document.getElementById('apiKeyInput');
-const keyToggleVisibility = document.getElementById('keyToggleVisibility');
-const keyStatus = document.getElementById('keyStatus');
-const keyStatusText = document.getElementById('keyStatusText');
-const keySaveBtn = document.getElementById('keySaveBtn');
-const keyClearBtn = document.getElementById('keyClearBtn');
-
-function maskKey(key){
-  if (key.length <= 8) return key;
-  return key.slice(0, 6) + '\u2026' + key.slice(-4);
-}
-
-function refreshKeyStatus(){
-  const hasKey = !!(OPENROUTER_API_KEY && OPENROUTER_API_KEY !== API_KEY_PLACEHOLDER);
-  keyClearBtn.disabled = !hasKey;
-  keyStatus.classList.remove('saved', 'empty', 'invalid');
-  if (hasKey){
-    keyStatus.classList.add('saved');
-    keyStatusText.textContent = 'Saved \u2014 ' + maskKey(OPENROUTER_API_KEY);
-  } else {
-    keyStatus.classList.add('empty');
-    keyStatusText.textContent = 'No key saved yet';
-  }
-}
-
-function openSettingsPanel(){
-  settingsPanel.classList.add('open');
-  settingsBtn.setAttribute('aria-expanded', 'true');
-  apiKeyInput.value = (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== API_KEY_PLACEHOLDER) ? OPENROUTER_API_KEY : '';
-  refreshKeyStatus();
-  setTimeout(() => apiKeyInput.focus(), 50);
-}
-function closeSettingsPanel(){
-  settingsPanel.classList.remove('open');
-  settingsBtn.setAttribute('aria-expanded', 'false');
-}
-
-settingsBtn.addEventListener('click', () => {
-  if (settingsPanel.classList.contains('open')) closeSettingsPanel();
-  else openSettingsPanel();
-});
-
-keyToggleVisibility.addEventListener('click', () => {
-  const showing = apiKeyInput.type === 'text';
-  apiKeyInput.type = showing ? 'password' : 'text';
-  keyToggleVisibility.setAttribute('aria-pressed', String(!showing));
-  keyToggleVisibility.setAttribute('aria-label', showing ? 'Show key' : 'Hide key');
-  keyToggleVisibility.innerHTML = `<i class="fa-solid ${showing ? 'fa-eye' : 'fa-eye-slash'}" aria-hidden="true"></i>`;
-});
-
-keySaveBtn.addEventListener('click', () => {
-  const value = apiKeyInput.value.trim();
-  if (!value){
-    showNotice('Write a key into the field first.', 2600);
-    return;
-  }
-  localStorage.setItem(API_KEY_STORAGE_KEY, value);
-  OPENROUTER_API_KEY = value;
-  refreshKeyStatus();
-  showNotice('The diary has your key. It stirs.', 2400);
-  checkDiaryConnection();
-});
-
-keyClearBtn.addEventListener('click', () => {
-  localStorage.removeItem(API_KEY_STORAGE_KEY);
-  OPENROUTER_API_KEY = API_KEY_PLACEHOLDER;
-  apiKeyInput.value = '';
-  refreshKeyStatus();
-  showNotice('The key has been removed.', 2200);
-});
-
-apiKeyInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter'){
-    e.preventDefault();
-    keySaveBtn.click();
-  }
-});
-
-refreshKeyStatus();
 
 /* =====================================================================
    11. PWA INSTALL PROMPT (native beforeinstallprompt only)
@@ -1487,11 +1357,12 @@ function computeLineHeight(){
 
 function init(){
   computeLineHeight();
-  sizeCanvas();
   showPlaceholderIfEmpty();
   if (!navigator.onLine) setStatus('offline');
-  // Auto-focus on non-touch devices only, to avoid popping the mobile keyboard on load
-  if (!('ontouchstart' in window)) hiddenInput.focus({ preventScroll: true });
+  // Auto-focus on PC only, so the physical keyboard is ready immediately.
+  // Touch devices wait for the person to tap the keyboard toggle, so the
+  // virtual keyboard never pops open uninvited.
+  if (!isTouchDevice) hiddenInput.focus({ preventScroll: true });
 
   // smooth auto-scroll of page container when content grows (kept minimal: page itself doesn't scroll by design,
   // but if a browser forces overflow due to on-screen keyboard, ease it back)
@@ -1512,8 +1383,8 @@ function init(){
    ===================================================================== */
 async function checkDiaryConnection(){
   const key = (OPENROUTER_API_KEY || '').trim();
-  if (!key || key === API_KEY_PLACEHOLDER){
-    showNotice('The diary is asleep — add your key in the menu to wake it.', 4200);
+  if (!key || key === 'YOUR_API_KEY'){
+    showNotice('The diary is asleep — no key has been set inside it.', 4200);
     return;
   }
   if (!navigator.onLine){
