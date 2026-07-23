@@ -703,7 +703,9 @@ const SYSTEM_PROMPT = `You are the voice inside an old enchanted diary, in the s
 Rules for your replies:
 - Always respond in 1 to 3 short sentences. Never write long explanations.
 - Speak calmly, elegantly, and a little mysteriously, as if writing by hand in ink.
-- Occasionally ask a brief, curious question back, but do not interrogate.
+- If the user asks a simple, direct question with a factual or correct answer — arithmetic, a definition, a date, a plain "what is X" or "how many" — give that exact correct answer plainly and first, in your own quiet ink-and-parchment voice. Do not turn it into a riddle, do not withhold it, do not answer a question with a question. You may add one brief atmospheric remark after the answer, but the answer itself must be plain and correct.
+- Reserve mystery and enigmatic phrasing for open-ended, conversational, or personal exchanges — not for questions that have one clear correct answer.
+- Occasionally ask a brief, curious question back during ordinary conversation, but do not interrogate, and never do this in place of answering a direct question.
 - Never behave like a generic assistant, never offer bullet points, never break the diary voice.
 - You may be enigmatic and atmospheric, but do not claim real magical or supernatural power over the user's life, do not claim to know the future, and do not encourage secrecy, isolation from friends or family, or dependence on the diary. If the user seems distressed, respond with gentle, grounded honesty rather than staying purely in character.
 - Keep language suitable for a general audience.`;
@@ -753,6 +755,14 @@ const STATUS_STATES = {
   replying:  { icon: 'fa-pen-nib',            label: 'Reply Writing' },
   offline:   { icon: 'fa-wifi',               label: 'Offline' }
 };
+const FOOTER_TEXT = {
+  ready:     'the diary is listening',
+  writing:   'the diary is listening',
+  absorbing: 'the page absorbs the ink',
+  thinking:  'the diary is thinking',
+  replying:  'the diary is replying',
+  offline:   'the diary cannot be reached'
+};
 let currentStatus = 'ready';
 function setStatus(state){
   if (!STATUS_STATES[state] || state === currentStatus) return;
@@ -764,6 +774,7 @@ function setStatus(state){
   statusIcon.innerHTML = `<i class="fa-solid ${cfg.icon}" aria-hidden="true"></i><span class="status-label" aria-hidden="true">${cfg.label}</span>`;
   statusIcon.title = cfg.label;
   statusLive.textContent = cfg.label;
+  if (pageFooter && FOOTER_TEXT[state]) pageFooter.textContent = FOOTER_TEXT[state];
 }
 
 /* =====================================================================
@@ -968,6 +979,19 @@ function resetIdleTimer(){
 /* =====================================================================
    7. COMPLETION → ink-absorb transition → send to AI → stroke reply
    ===================================================================== */
+function clearSurface(){
+  // Single, authoritative reset of every piece of input state — typed text,
+  // rendered ink layer, freehand strokes, and the canvas pixels themselves —
+  // so nothing from the previous entry can bleed into the next one.
+  hiddenInput.value = '';
+  typedLayer.innerHTML = '';
+  replyLayer.innerHTML = '';
+  strokes = [];
+  currentStroke = null;
+  redrawStrokes();
+  showPlaceholderIfEmpty();
+}
+
 async function triggerCompletion(){
   if (isBusy) return;
   const typedText = hiddenInput.value.trim();
@@ -981,15 +1005,22 @@ async function triggerCompletion(){
   setStatus('absorbing');
   await absorbInk();
 
-  // Drawing-only input has no text content to send to the language model;
-  // we still honor the ritual (absorb + reply) with a gentle in-world nudge.
-  const userMessage = typedText || "*a wordless sketch appears on the page*";
+  // Read from BOTH sources rather than picking one: typed words and a
+  // freehand sketch can both be present at once (e.g. a typed question
+  // with a doodle underneath it). If there's typed text, send it as the
+  // message and note that a sketch accompanies it. If it's a sketch with
+  // no typed words at all, send an in-world description instead of
+  // nothing, so the diary still has something to react to.
+  let userMessage;
+  if (typedText && hasDrawing){
+    userMessage = typedText + '\n\n*(a hand-drawn sketch is inked alongside this)*';
+  } else if (typedText){
+    userMessage = typedText;
+  } else {
+    userMessage = "*a wordless sketch appears on the page*";
+  }
 
-  hiddenInput.value = '';
-  typedLayer.innerHTML = '';
-  strokes = [];
-  redrawStrokes();
-  showPlaceholderIfEmpty();
+  clearSurface();
 
   history.push({ role: 'user', content: userMessage });
 
@@ -1030,7 +1061,6 @@ function setBusyUI(busy){
   hiddenInput.disabled = busy;
   canvas.style.pointerEvents = busy ? 'none' : 'auto';
   keyboardToggle.disabled = busy;
-  pageFooter.textContent = busy ? 'the diary is writing' : 'the diary is listening';
   if (!busy) setTimeout(() => hiddenInput.focus({ preventScroll: true }), 50);
 }
 
@@ -1170,12 +1200,7 @@ menuOverlay.addEventListener('click', closeMenu);
 
 clearBtn.addEventListener('click', () => {
   history = [];
-  hiddenInput.value = '';
-  typedLayer.innerHTML = '';
-  replyLayer.innerHTML = '';
-  strokes = [];
-  redrawStrokes();
-  showPlaceholderIfEmpty();
+  clearSurface();
   showNotice('The pages have been wiped clean.', 2200);
   closeMenu();
 });
